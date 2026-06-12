@@ -1,8 +1,9 @@
+#%%
 import numpy as np
 import matplotlib.pyplot as plt
-
-
 import os
+
+#%%
 
 def save_matrix_image(A, iteration, max_iters, folder="snapshots"):
 
@@ -74,30 +75,51 @@ def generate_reference(seed=None):
 # I_i = sum_j A_ij (v_i - v_j)
 # ============================================================
 
-def Phi(A, v):
+# def Phi(A, v):
 
-    n = len(v)
+#     n = len(v)
 
-    I = np.zeros(n)
+#     I = np.zeros(n)
 
-    for i in range(n):
-        for j in range(n):
-            I[i] += A[i, j] * (v[i] - v[j])
+#     for i in range(n):
+#         for j in range(n):
+#             I[i] += A[i, j] * (v[i] - v[j])
 
-    return I
+#     return I
 
+
+# def Phi2(A, v):
+
+#     n = len(v)
+
+#     I = np.zeros(n)
+
+#     for i in range(1, n):
+#         for j in range(n):
+#             I[i] += A[i, j] * (v[j] - v[i])
+
+#     I[0] = np.sum(I[1:])
+
+#     return I
 
 # ============================================================
 # Matrix form of Phi
 # ============================================================
 
-def Phi_matrix(A, v):
+def Phi(A, v):
 
     ones = np.ones(len(v))
 
-    B = np.outer(v, ones) - np.outer(ones, v)
+    B = np.outer(ones, v) - np.outer(v, ones)
 
-    return np.diag(A @ B)
+    # d = -ones.copy()
+    # d[0] = 1
+    # C = np.diag(d)
+
+    # I = np.diag(C @ A @ B)
+    I = np.diag(A @ B)
+
+    return I
 
 
 # ============================================================
@@ -146,7 +168,7 @@ def F(A, V, I):
 
         r = Phi(A, v) - i
 
-        loss += np.sum(r**2)
+        loss += 0.5*np.sum(r**2)
 
     return loss
 
@@ -190,6 +212,7 @@ def gradient_check(A, V, I):
     eps = 1e-6
 
     D = np.random.randn(*A.shape)
+    D = project(D)
 
     lhs = (
         F(A + eps * D, V, I)
@@ -212,8 +235,8 @@ def gradient_descent(
     A,
     V,
     I,
-    lr=1e-6,
-    max_iters=5000
+    lr,
+    max_iters=10
 ):
 
     save_points = {
@@ -228,7 +251,7 @@ def gradient_descent(
 
         loss = F(A, V, I)
 
-        if it % 100 == 0:
+        if it % 10 == 0:
             print(f"Iter {it:5d}   Loss = {loss:.6e}")
 
         grad = G(A, V, I)
@@ -247,28 +270,58 @@ def gradient_descent(
     return A
 
 
+#%%
+
 # ============================================================
 # Main
 # ============================================================
 
 V, I = generate_data(N=100)
 
+# Ihat = I[0]
+# Itilde = Phi2(generate_matrix(), V[0])
+# Ibar = Phi_matrix(generate_matrix(), V[0])
+
+# print('Ihat', Ihat)
+# print('Itilde', Itilde)
+# print('Ibar', Ibar)
+
 A_true = generate_matrix()
 
 rng = np.random.default_rng(0)
 
-A_init = A_true + 5000.0 * rng.standard_normal(A_true.shape)
+A_init = np.random.uniform(0, 400, size=A_true.shape)
+
 A_init = project(A_init)
+plt.imshow(A_init)
+plt.colorbar()
+plt.title("Initial A")
+plt.show()
+
+plt.imshow(A_true)
+plt.colorbar()
+plt.title("True A")
+plt.show()
+
+
+# A_init = A_true + 5000.0 * rng.standard_normal(A_true.shape)
+# A_init = project(A_init)
 
 gradient_check(A_init, V, I)
 
+
+#%%
 A_learned = gradient_descent(
     A_init,
     V,
     I,
-    lr=1e-3,
-    max_iters=10000
+    lr=1e-2,
+    max_iters=1000
 )
+
+#%%
+
+np.set_printoptions(precision=2)
 
 print("\nTrue A")
 print(A_true)
@@ -277,7 +330,10 @@ print("\nLearned A")
 print(A_learned)
 
 print("\nError")
+print(A_true - A_learned)
 print(np.linalg.norm(A_true - A_learned)/np.linalg.norm(A_true))
+
+#%%
 
 plt.figure()
 plt.imshow(A_true)
@@ -302,3 +358,4 @@ plt.colorbar()
 plt.title("Error")
 
 plt.show()
+# %%
